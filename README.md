@@ -33,6 +33,21 @@ Password yourftppass
 Server ftp.mybackupserver.com
 ```
 
+Then set the variables at the top of homebackup.sh:
+```
+share="/data/Pictures" # the target share to operate against
+filedb="/tmp/filelist.txt" # location for temp list of files
+md5db="/tmp/md5list.txt" # location for temp md5 list
+lockfile="/tmp/backup.lck" # lockfile
+checkdays=0 # number of days back to check for dupes - 0 means all
+backuptries=10 # number of tries to back up your data with a clean return code
+ownuser="nobody" # the user that should own all the files in the share
+owngroup="samba" # the group that should own all the files in the share
+noexif="Unsorted" # name of folder in share to put files that dont have exif data. Relative to share target
+remotedir="backup" # remote FTP target directory for backups
+filedepth="8" # maximum levels deep to rename files and folders with spaces
+```
+
 
 You also may want to schedule this with a cron job.  Run crontab -e and enter the following.  The MAILTO variable is optional but will make your server send you email reports to you instead of root (provided your email server works at home).
 
