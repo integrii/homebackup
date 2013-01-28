@@ -9,10 +9,34 @@ Over the many years of taking digital photography, my home server was just pilin
 Even worse, I had no idea where anything was.  Folders were all named whatever we felt like naming them at time of import.  While it made sense at the time - in the long run it ended up being a cluttered mess.
 
 To fix the problem, I needed to do three things at a regular interval:
-* Remove duplicate files
+* Remove duplicate files by MD5
 * Sort the files by EXIF data or creation date
 * Back the resultant files up to a remote FTP
 
 Thus homebackup.sh was born.  The script does exactly those things using exiftags and lftp.
 
 The script is bash so it runs nearly everywhere.  This also means it is easy to modify and add your own code.  Want to do a network rsync instead of lftp?  Just replace the lftp command with an rsync and you're good to go.
+
+The overall idea here is that you can setup this script to run as a cron job every few days and then mindlessly dump any photos you care about into your server.  The script will make sense of it all and delete any duplicates you don't need along the way.
+
+
+
+setup
+=====
+
+Setup is straightforward. All you need to do is make a config with your FTP server credentials in it like below:
+
+~/.homebackup.cfg
+```
+User yourftpuser
+Password yourftppass
+Server ftp.mybackupserver.com
+```
+
+
+You also may want to schedule this with a cron job.  Run crontab -e and enter the following.  The MAILTO variable is optional but will make your server send you email reports to you instead of root (provided your email server works at home).
+
+```
+MAILTO=myemail@mydomain.com
+0 0 */3 * * /path/to/homebackup.cfg
+```
