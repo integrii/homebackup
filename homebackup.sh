@@ -21,6 +21,10 @@ owngroup="samba" # the group that should own all the files in the share
 noexif="Unsorted" # name of folder in share to put files that dont have exif data. Relative to share target
 remotedir="homeshare" # remote FTP target directory for backups
 filedepth="8" # maximum levels deep to rename files and folders with spaces
+bwlimit="262144" # bandwidth limit in bits per second
+fileperms="775" # chmod files to this permissions set
+dirperms="775" # chmod diretories to this permissions set
+
 
 if [[ -f $lockfile ]]; then
 	echo $0 is already running.  $lockfile exists.
@@ -44,9 +48,9 @@ fi
 
 
 if [ -f ~/.homebackup.cfg ]; then
-	ftpuser=$(cat ~/.homebackup.cfg | grep User | sed -i 's/User //')
-	ftppass=$(cat ~/.homebackup.cfg | grep Password | sed -i 's/Password //')
-	ftpserver=$(cat ~/.homebackup.cfg | grep Server | sed -i 's/Server //')
+	ftpuser=$(cat ~/.homebackup.cfg | grep User | sed -e 's/User //')
+	ftppass=$(cat ~/.homebackup.cfg | grep Password | sed -e 's/Password //')
+	ftpserver=$(cat ~/.homebackup.cfg | grep Server | sed -e 's/Server //')
 	echo "Backing up data to $ftpuser@$ftpserver."
 else
 	cat << EOF
@@ -105,7 +109,7 @@ mindepth="0"
 while [[ $fileruns -le $filedepth ]]; do
 	echo -n "."
 	fileruns=$(( $fileruns + 1 ))
-	find $share -mindepth $mindepth -maxdepth $fileruns -iname '*.jpeg' -iname '*.bmp' -iname '*rw*' -iname '*png' -iname '*.psd' -iname '*.tif' -iname '*.jpg' -o -iname '*.gif' -type f ! -name "*;*" ! -name "*&*" | while read file; do
+	find $share -mindepth $mindepth -maxdepth $fileruns -type f ! -name "*;*" ! -name "*&*" | while read file; do
 		echo "$file" | grep " " > /dev/null
 		if [[ $? -eq 0 ]]; then
 			cleanfile=$( echo ${file} | tr "()$ " "_" )
@@ -113,15 +117,6 @@ while [[ $fileruns -le $filedepth ]]; do
 			if [ ! -f "$cleanfile" ]; then
 				#echo mv -n "$file" "$cleanfile"
 				mv -n "$file" "$cleanfile"
-			else 
-				filemd5=$(md5sum \"$file\" | cut -f1 d\ )
-				cleanmd5=$(md5sum \"$cleanfile\" | cut -f1 d\ )
-				if [[ "$filemd5" = "$cleanmd5" ]]; then
-					rm -f $file
-					echo -e "\nDeleted $file because it was a duplicate of $cleanfile \($filemd5 vs $cleanmd5\)."
-				else
-					echo -e \nERROR: Cant move $file to "$cleanfile" because it already exists!
-				fi
 			fi
 		fi
 	done
@@ -138,7 +133,7 @@ find $share -type f -name "ehthumbs_vista.db" -exec rm -f {} \;
 
 
 echo "Fetching md5 sums..."
-find $share -mtime $checkdays -type f ! -name "*;*" ! -name "*&*" -exec md5sum "{}" >> $md5db \;
+find $share -mtime $checkdays -type f ! -name "*;*" ! -name "*&*" -exec md5sum {} >> $md5db \;
 cut -f1 -d\  $md5db > $md5db.cut
 sort $md5db.cut > $md5db.sorted
 echo "Detecting duplicate files..."
@@ -178,36 +173,22 @@ fi
 
 # Step 2: Sort our files into year folders nicely by exif date or creation date
 echo -n "Fetching list of files... "
-find $share -iname '*jpg' -o -iname '*gif' -type f ! -name "*;*" ! -name "*&*" > $filedb
-echo "`wc -l $filedb | cut -d\  -f1` files found."
+find $share -type f ! -name "*;*" ! -name "*&*" > $filedb
+echo "`wc -l $filedb | cut -f1 -d\ ` files found."
 echo "Moving files with EXIF data into directories sorted by date..."
-find $share -iname '*jpg' -o -iname '*gif' -type f ! -name "*;*" ! -name "*&*" | while read file; do
+find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	basename=`basename "$file"`
 	echo -n -e "\rProcessing $basename...                                                           "
-	exiftime=$(exiftags -q -i "$file" | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- ) 2> /dev/null
-	exitresult=$?
+	exiftime=$(exiftags -q -i "$file" 2> /dev/null | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- )
 	exiftimelen=`echo $exiftime | wc -c`
-	if [[ $exiftimelen -ge 4 && $exifresult -eq 0 ]]; then
+	if [[ $exiftimelen -ge 4 ]]; then
 		if [ ! -d "$share/$exiftime" ]; then
 			echo -e -n "\r\nMaking directory: $share/$exiftime"
 			mkdir "$share/$exiftime"
 		fi
 		if [ ! -f "$share/$exiftime/$basename" ]; then
-				#echo -e -n "\r\nMoving $file to $share/$exiftime/$basename"
-				mv -n "$file" "$share/$exiftime/$basename"
-		else
-			if [ "$file" != "$share/$exiftime/$basename" ]; then
-				filemd5=$(md5sum \"$file\" | cut -f1 d\ )
-				cleanmd5=$(md5sum \"$cleanfile\" | cut -f1 d\ )
-				if [[ "$filemd5" = "$cleanmd5" ]]; then
-					rm -f $file
-					echo -e "\nDeleted $file because it was a duplicate of $cleanfile."
-				else
-					echo -e "\rERROR: Cant move $file to $share/$exiftime/$basename because it exists. "
-				fi
-			else
-				echo -e -n "\r$file does not need to be moved.                                       "
-			fi
+			#echo -e -n "\r\nMoving $file to $share/$exiftime/$basename"
+			mv -n "$file" "$share/$exiftime/$basename"
 		fi
 	else
 		echo -e -n "\r\nNo EXIF time found for $file"
@@ -218,17 +199,6 @@ find $share -iname '*jpg' -o -iname '*gif' -type f ! -name "*;*" ! -name "*&*" |
 		if [ ! -f "$share/$noexif/$basename" ]; then
 			#echo -e -n "\r\nMoving $file to $share/$noexif/$basename"
 			mv -n "$file" "$share/$noexif/$basename"
-		else
-			if [ "$file" != "$share/$exiftime/$basename" ]; then
-				filemd5=$(md5sum \"$file\" | cut -f1 -d\ )
-				destmd5=$(md5sum \"$share/$noexif/$basename\" | cut -f1 -d\ )
-				if [[ "$filemd5" = "$destmd5" ]]; then
-					rm -f $file
-					echo -e "\nDeleted $file because it was a duplicate of $share/$noexif/$basename."
-				else
-					echo -e "\rERROR: Cant move $file to $share/$exiftime/$basename because it exists. "
-				fi
-			fi
 		fi
 	fi
 done
@@ -265,22 +235,15 @@ if [[ -d $share/0000 ]]; then
 fi
 
 
-echo -n "Removing empty directories"
+echo "Removing empty directories..."
 sleep 2 # wait for disk actions to complete or sometimes errors will occur where find things files are missing
-dirruns=0
-mindepth=0
-while [[ $dirruns -le $filedepth ]]; do
-	echo -n "."
-	dirruns=$(( $dirruns + 1 ))
-	find $share -mindepth $mindepth -maxdepth $dirruns -type d -empty -exec rmdir {} \;
-	mindepth=$(( $mindepth + 1 ))
-done
-echo -e "\nSetting ownership..."
+find $share -type d -empty -exec rmdir {} \;
+echo "Setting ownership..."
 chown -R $ownuser:$owngroup "$share"
 echo "Fixing permissions on directories..."
-find $share -type d -exec chmod 777 {} \; # 777 for samba ease
+find $share -type d -exec chmod $dirperms {} \; 
 echo "Fixing permissions on files..."
-find $share -type f -exec chmod 666 {} \; # 666 for samba ease
+find $share -type f -exec chmod $fileperms {} \;
 
 
 
@@ -292,7 +255,7 @@ if [ -f ~/.lftprc ]; then
 fi
 cat << EOF > ~/.lftprc	
 set net:connection-limit 1
-set net:limit-rate 262144
+set net:limit-rate ${bwlimit}
 EOF
 if [ -f ~/.lftprc.backup ]; then
 	mv -n ~/.lftprc.backup ~/.lftprc
@@ -300,7 +263,10 @@ fi
 
 #lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share /" $ftpserver # lftp sync up without a delet
 #rsync --bwlimit=250 -avn --delete $share $ftpuser@$ftpserver:  # rsync with a delete after
-while [[ $result -ne 0 && $failures -le $backuptries]]; do
+echo "DEBUG - BYPASSING BACKUP"
+result=$?
+failures=0
+while [[ "$result" -ne "0" ]] && [[ "$failures" -le "$backuptries" ]]; do
 	failures=$(($failures + 1))
 	echo "RETRYING BACKUP - FAILURE DETECTED"
 	#lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share /" $ftpserver # lftp sync up without a delete

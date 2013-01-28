@@ -46,6 +46,8 @@ owngroup="samba" # the group that should own all the files in the share
 noexif="Unsorted" # name of folder in share to put files that dont have exif data. Relative to share target
 remotedir="backup" # remote FTP target directory for backups
 filedepth="8" # maximum levels deep to rename files and folders with spaces
+bwlimit="262144" # bandwidth limit in bits per second
+
 ```
 
 
