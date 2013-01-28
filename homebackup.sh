@@ -133,7 +133,7 @@ find $share -type f -name "ehthumbs_vista.db" -exec rm -f {} \;
 
 
 echo "Fetching md5 sums..."
-find $share -mtime $checkdays -type f ! -name "*;*" ! -name "*&*" -exec md5sum {} >> $md5db \;
+find $share -mtime $checkdays -type f ! -name "*;*" ! -name "*&*" -exec md5sum "{}" 2>/dev/null >> $md5db \;
 cut -f1 -d\  $md5db > $md5db.cut
 sort $md5db.cut > $md5db.sorted
 echo "Detecting duplicate files..."
@@ -178,12 +178,12 @@ echo "`wc -l $filedb | cut -f1 -d\ ` files found."
 echo "Moving files with EXIF data into directories sorted by date..."
 find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	basename=`basename "$file"`
-	echo -n -e "\rProcessing $basename...                                                           "
+	echo -n -e "\rProcessing $basename...                                                                        "
 	exiftime=$(exiftags -q -i "$file" 2> /dev/null | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- )
-	exiftimelen=`echo $exiftime | wc -c`
+	exiftimelen=$(echo $exiftime | grep -v 'No EXIF time' | wc -c)
 	if [[ $exiftimelen -ge 4 ]]; then
 		if [ ! -d "$share/$exiftime" ]; then
-			echo -e -n "\r\nMaking directory: $share/$exiftime"
+			#echo -e -n "\r\nMaking directory: $share/$exiftime"
 			mkdir "$share/$exiftime"
 		fi
 		if [ ! -f "$share/$exiftime/$basename" ]; then
@@ -191,9 +191,9 @@ find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 			mv -n "$file" "$share/$exiftime/$basename"
 		fi
 	else
-		echo -e -n "\r\nNo EXIF time found for $file"
+		#echo -e -n "\r\nNo EXIF time found for $file"
 		if [ ! -d "$share/$noexif" ]; then
-			echo -e -n "\r\nMaking directory: $share/$noexif"
+			#echo -e -n "\r\nCreated directory: $share/$noexif"
 			mkdir $share/$noexif
 		fi
 		if [ ! -f "$share/$noexif/$basename" ]; then
@@ -205,6 +205,11 @@ done
 echo -e -n "\r"
 
 
+if [[ ! -d $share/$noexif ]]; then
+	mkdir $share/$noexif
+	echo "Created directory: $share/$noexif"
+fi
+echo "Sorting files in unsorted directory by creation date..."
 find $share/$noexif -type f | while read noexiffile; do
 	destdir=$(stat "$noexiffile" | grep Modify | cut -f2  -d\ | cut -f1 -d-)
 	if [ ! -d $share/$destdir ]; then
@@ -216,14 +221,7 @@ find $share/$noexif -type f | while read noexiffile; do
 	fi
 done
 
-
-
-
 echo "Moving unsorted files into directory...                                                       "
-if [[ ! -d $share/$noexif ]]; then
-	mkdir $share/$noexif
-	echo "Created directory: $share/$noexif"
-fi
 find $share -maxdepth 1 -type f | while read unsorted; do
 	if [[ -f "$unsorted" ]]; then
 		basename=`basename "$unsorted"`
@@ -231,13 +229,19 @@ find $share -maxdepth 1 -type f | while read unsorted; do
 	fi
 done
 if [[ -d $share/0000 ]]; then
+	if [[ ! -d $share/$noexif ]]; then
+		mkdir $share/$noexif
+		echo "Created directory: $share/$noexif"
+	fi
 	mv -n $share/0000/* $share/$noexif/
 fi
 
 
 echo "Removing empty directories..."
-sleep 2 # wait for disk actions to complete or sometimes errors will occur where find things files are missing
-find $share -type d -empty -exec rmdir {} \;
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
 echo "Setting ownership..."
 chown -R $ownuser:$owngroup "$share"
 echo "Fixing permissions on directories..."
