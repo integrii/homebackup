@@ -18,7 +18,7 @@ checkdays=0 # number of days back to check for dupes - 0 means all
 backuptries=10 # number of tries to back up your data with a clean return code
 ownuser="nobody" # the user that should own all the files in the share
 owngroup="samba" # the group that should own all the files in the share
-noexif="Unsorted" # name of folder in share to put files that dont have exif data. Relative to share target
+noexif="Unsortable" # name of folder in share to put files that dont have exif data. Relative to share target
 remotedir="homeshare" # remote FTP target directory for backups
 filedepth="8" # maximum levels deep to rename files and folders with spaces
 bwlimit="262144" # bandwidth limit in bits per second
@@ -73,6 +73,12 @@ dirruns=0
 fileruns=0
 mindepth="0"
 umask 0000
+
+
+if [ ! -d "$share/$noexif" ]; then
+	#echo -e -n "\r\nCreated directory: $share/$noexif"
+	mkdir $share/$noexif
+fi
 
 echo "Target: $share"
 
@@ -178,10 +184,12 @@ echo "`wc -l $filedb | cut -f1 -d\ ` files found."
 echo "Moving files with EXIF data into directories sorted by date..."
 find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	basename=`basename "$file"`
-	echo -n -e "\rProcessing $basename...                                                                        "
+	#echo -n -e "\rProcessing $basename...                                                                        "
+	echo "$file"
 	exiftime=$(exiftags -q -i "$file" 2> /dev/null | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- )
 	exiftimelen=$(echo $exiftime | grep -v 'No EXIF time' | wc -c)
 	if [[ $exiftimelen -ge 4 ]]; then
+echo "exif data found: $exiftime"
 		if [ ! -d "$share/$exiftime" ]; then
 			#echo -e -n "\r\nMaking directory: $share/$exiftime"
 			mkdir "$share/$exiftime"
@@ -189,35 +197,39 @@ find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 		if [ ! -f "$share/$exiftime/$basename" ]; then
 			#echo -e -n "\r\nMoving $file to $share/$exiftime/$basename"
 			mv -n "$file" "$share/$exiftime/$basename"
+		else
+			mv -n "$file" "$share/$exiftime/$RANDOM$basename"
 		fi
 	else
+echo "no exif data"
 		#echo -e -n "\r\nNo EXIF time found for $file"
-		if [ ! -d "$share/$noexif" ]; then
-			#echo -e -n "\r\nCreated directory: $share/$noexif"
-			mkdir $share/$noexif
-		fi
 		if [ ! -f "$share/$noexif/$basename" ]; then
-			#echo -e -n "\r\nMoving $file to $share/$noexif/$basename"
+echo "moving to unsorted folder"
+			echo -e -n "\r\nMoving $file to $share/$noexif/$basename"
 			mv -n "$file" "$share/$noexif/$basename"
+		else
+			mv -n "$file" "$share/$noexif/$RANDOM$basename"
 		fi
 	fi
 done
 echo -e -n "\r"
 
-
-if [[ ! -d $share/$noexif ]]; then
-	mkdir $share/$noexif
-	echo "Created directory: $share/$noexif"
+if [[ -d $share/0000 ]]; then
+	mv -n $share/0000/* $share/$noexif/
 fi
+
 echo "Sorting files in unsorted directory by creation date..."
 find $share/$noexif -type f | while read noexiffile; do
 	destdir=$(stat "$noexiffile" | grep Modify | cut -f2  -d\ | cut -f1 -d-)
+echo stat $destdir
 	if [ ! -d $share/$destdir ]; then
 		mkdir -p $share/$destdir
 	fi
 	destfile=$(basename "$noexiffile");
 	if [ ! -f "$share/$destdir/$destfile" ]; then
 		mv -n "$noexiffile" "$share/$destdir/$destfile"
+	else
+		mv -n "$noexiffile" "$share/$destdir/$ANDOM$destfile"
 	fi
 done
 
@@ -228,19 +240,9 @@ find $share -maxdepth 1 -type f | while read unsorted; do
 		mv -n "$unsorted" "$share/$noexif/$basename"
 	fi
 done
-if [[ -d $share/0000 ]]; then
-	if [[ ! -d $share/$noexif ]]; then
-		mkdir $share/$noexif
-		echo "Created directory: $share/$noexif"
-	fi
-	mv -n $share/0000/* $share/$noexif/
-fi
 
 
 echo "Removing empty directories..."
-find $share -type d -empty -exec rmdir {} \; 2> /dev/null
-find $share -type d -empty -exec rmdir {} \; 2> /dev/null
-find $share -type d -empty -exec rmdir {} \; 2> /dev/null
 find $share -type d -empty -exec rmdir {} \; 2> /dev/null
 echo "Setting ownership..."
 chown -R $ownuser:$owngroup "$share"
