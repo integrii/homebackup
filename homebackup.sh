@@ -189,7 +189,6 @@ find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	exiftime=$(exiftags -q -i "$file" 2> /dev/null | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- )
 	exiftimelen=$(echo $exiftime | grep -v 'No EXIF time' | wc -c)
 	if [[ $exiftimelen -ge 4 ]]; then
-echo "exif data found: $exiftime"
 		if [ ! -d "$share/$exiftime" ]; then
 			#echo -e -n "\r\nMaking directory: $share/$exiftime"
 			mkdir "$share/$exiftime"
@@ -201,10 +200,8 @@ echo "exif data found: $exiftime"
 			mv -n "$file" "$share/$exiftime/$RANDOM$basename"
 		fi
 	else
-echo "no exif data"
 		#echo -e -n "\r\nNo EXIF time found for $file"
 		if [ ! -f "$share/$noexif/$basename" ]; then
-echo "moving to unsorted folder"
 			echo -e -n "\r\nMoving $file to $share/$noexif/$basename"
 			mv -n "$file" "$share/$noexif/$basename"
 		else
@@ -221,7 +218,6 @@ fi
 echo "Sorting files in unsorted directory by creation date..."
 find $share/$noexif -type f | while read noexiffile; do
 	destdir=$(stat "$noexiffile" | grep Modify | cut -f2  -d\ | cut -f1 -d-)
-echo stat $destdir
 	if [ ! -d $share/$destdir ]; then
 		mkdir -p $share/$destdir
 	fi
@@ -243,6 +239,15 @@ done
 
 
 echo "Removing empty directories..."
+# I am not exactly sure why this must be run multiple times to delete every empty folder, but it must.
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
+find $share -type d -empty -exec rmdir {} \; 2> /dev/null
 find $share -type d -empty -exec rmdir {} \; 2> /dev/null
 echo "Setting ownership..."
 chown -R $ownuser:$owngroup "$share"
@@ -267,16 +272,17 @@ if [ -f ~/.lftprc.backup ]; then
 	mv -n ~/.lftprc.backup ~/.lftprc
 fi
 
-#lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share /" $ftpserver # lftp sync up without a delet
-#rsync --bwlimit=250 -avn --delete $share $ftpuser@$ftpserver:  # rsync with a delete after
-echo "DEBUG - BYPASSING BACKUP"
-result=$?
 failures=0
+result=1
 while [[ "$result" -ne "0" ]] && [[ "$failures" -le "$backuptries" ]]; do
-	failures=$(($failures + 1))
-	echo "RETRYING BACKUP - FAILURE DETECTED"
-	#lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share /" $ftpserver # lftp sync up without a delete
+	# Input backup command here.  Use $ftpuser $ftppass $ftpserver and $share variables where necessary.
+	#lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share /" $ftpserver # lftp sync up without a delet
+	#rsync --bwlimit=250 -avn --delete $share $ftpuser@$ftpserver:  # rsync with a delete after
 	result=$?
+	if [[ $result -ne 0 ]]; then
+		failures=$(($failures + 1))
+		echo "Backup failure detected.  Try $failures of $backuptries."
+	fi
 done
 
 
