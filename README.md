@@ -51,7 +51,7 @@ bwlimit="262144" # bandwidth limit in bits per second
 ```
 
 
-You also may want to schedule this with a cron job.  Run crontab -e and enter the following.  The MAILTO variable is optional but will make your server send you email reports to you instead of root (provided your email server works at home).
+You also may want to schedule this with a cron job.  Run crontab -e and enter the following.  The MAILTO variable is optional but will make your server send you email reports to you instead of root (provided your email server works at home).  This cron job is for every three days.  
 
 ```
 MAILTO=myemail@mydomain.com
