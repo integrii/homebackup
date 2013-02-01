@@ -184,8 +184,8 @@ echo "`wc -l $filedb | cut -f1 -d\ ` files found."
 echo "Moving files with EXIF data into directories sorted by date..."
 find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	basename=`basename "$file"`
-	#echo -n -e "\rProcessing $basename...                                                                        "
-	echo "$file"
+	echo -n -e "\rProcessing $basename...                                                                        "
+	#echo "$file"
 	exiftime=$(exiftags -q -i "$file" 2> /dev/null | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- )
 	exiftimelen=$(echo $exiftime | grep -v 'No EXIF time' | wc -c)
 	if [[ $exiftimelen -ge 4 ]]; then
