@@ -276,7 +276,7 @@ failures=0
 result=1
 while [[ "$result" -ne "0" ]] && [[ "$failures" -le "$backuptries" ]]; do
 	# Input backup command here.  Use $ftpuser $ftppass $ftpserver and $share variables where necessary.
-	#lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share /" $ftpserver # lftp sync up without a delet
+	lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share $remotedir" $ftpserver # lftp sync up without a delete
 	#rsync --bwlimit=250 -avn --delete $share $ftpuser@$ftpserver:  # rsync with a delete after
 	result=$?
 	if [[ $result -ne 0 ]]; then
