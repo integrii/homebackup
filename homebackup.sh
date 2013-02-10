@@ -192,22 +192,31 @@ find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	exiftimelen=$(echo $exiftime | grep -v 'No EXIF time' | wc -c)
 	if [[ $exiftimelen -ge 4 ]]; then
 		if [ ! -d "$share/$exiftime" ]; then
-			#echo -e -n "\r\nMaking directory: $share/$exiftime"
+			echo -e -n "\r\nMaking directory: $share/$exiftime                                                                                    "
 			mkdir "$share/$exiftime"
 		fi
 		if [ ! -f "$share/$exiftime/$basename" ]; then
-			#echo -e -n "\r\nMoving $file to $share/$exiftime/$basename"
+			echo -e -n "\r\nMoving $file to $share/$exiftime/$basename                                                                            "
 			mv -n "$file" "$share/$exiftime/$basename"
 		else
-			mv -n "$file" "$share/$exiftime/$RANDOM$basename"
+			if [[ "$file" != "$share/$exiftime/$basename" ]]; then
+				rand=$RANDOM
+				#echo -e "\rRenaming $file to $rand$basename                                                                                           "
+				echo -e "\rRenaming $file to $rand$basename because $share/$exiftime/$basename already exists.                                    "
+				mv -n "$file" "$share/$exiftime/$rand$basename"
+			fi
 		fi
 	else
-		#echo -e -n "\r\nNo EXIF time found for $file"
+		echo -e "\rNo EXIF data found for $basename"
 		if [ ! -f "$share/$noexif/$basename" ]; then
-			echo -e -n "\r\nMoving $file to $share/$noexif/$basename"
-			mv -n "$file" "$share/$noexif/$basename"
+				echo -e -n "\r\nMoving $file to $share/$noexif/$basename                                                                          "
+				mv -n "$file" "$share/$noexif/$basename"
 		else
-			mv -n "$file" "$share/$noexif/$RANDOM$basename"
+			if [[ "$file" != "$share/$noexif/$basename" ]]; then
+				rand=$RANDOM
+				echo -e "\rRenaming $file to $rand$basename because $share/$noexif/$basename already exists.                                      "
+				mv -n "$file" "$share/$noexif/$rand$basename"
+			fi
 		fi
 	fi
 done
