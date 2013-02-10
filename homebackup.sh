@@ -207,14 +207,14 @@ find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 			fi
 		fi
 	else
-		echo -e "\rNo EXIF data found for $basename"
+		echo -e "\rNo EXIF data found for $basename                                         "
 		if [ ! -f "$share/$noexif/$basename" ]; then
-				echo -e -n "\r\nMoving $file to $share/$noexif/$basename                                                                          "
+				echo -e "\rMoving $file to $share/$noexif/$basename"
 				mv -n "$file" "$share/$noexif/$basename"
 		else
 			if [[ "$file" != "$share/$noexif/$basename" ]]; then
 				rand=$RANDOM
-				echo -e "\rRenaming $file to $rand$basename because $share/$noexif/$basename already exists.                                      "
+				echo -e "\rRenaming $file to $rand$basename because $share/$noexif/$basename already exists."
 				mv -n "$file" "$share/$noexif/$rand$basename"
 			fi
 		fi
