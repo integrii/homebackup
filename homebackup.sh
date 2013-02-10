@@ -19,7 +19,7 @@ backuptries=10 # number of tries to back up your data with a clean return code
 ownuser="nobody" # the user that should own all the files in the share
 owngroup="samba" # the group that should own all the files in the share
 noexif="Unsortable" # name of folder in share to put files that dont have exif data. Relative to share target
-remotedir="homeshare" # remote FTP target directory for backups
+remotedir="/" # remote FTP target directory for backups
 filedepth="8" # maximum levels deep to rename files and folders with spaces
 bwlimit="262144" # bandwidth limit in bytes per second
 fileperms="775" # chmod files to this permissions set
@@ -37,12 +37,14 @@ fi
 which exiftags &> /dev/null
 if [[ $? -ne 0 ]]; then
 	echo "$0 requires exiftags to be installed."
+	echo "Install it by running: yum install exiftags -y -q"
 	exit 1
 fi
 
 which lftp &> /dev/null
 if [[ $? -ne 0 ]]; then
 	echo "$0 requires lftp to be installed."
+	echo "Install it by running: yum install lftp -y -q"
 	exit 1
 fi
 
@@ -184,7 +186,7 @@ echo "`wc -l $filedb | cut -f1 -d\ ` files found."
 echo "Moving files with EXIF data into directories sorted by date..."
 find $share -type f ! -name "*;*" ! -name "*&*" | while read file; do
 	basename=`basename "$file"`
-	echo -n -e "\rProcessing $basename...                                                                        "
+	echo -n -e "\rProcessing $basename...                                                                                                        "
 	#echo "$file"
 	exiftime=$(exiftags -q -i "$file" 2> /dev/null | grep -i 'Image Created' | sed -e 's/Image Created: //' | cut -f1 -d: | cut -f1 -d- )
 	exiftimelen=$(echo $exiftime | grep -v 'No EXIF time' | wc -c)
@@ -276,7 +278,7 @@ failures=0
 result=1
 while [[ "$result" -ne "0" ]] && [[ "$failures" -le "$backuptries" ]]; do
 	# Input backup command here.  Use $ftpuser $ftppass $ftpserver and $share variables where necessary.
-	lftp -u $ftpuser,$ftpass -e "mirror --reverse --only-newer $share $remotedir" $ftpserver # lftp sync up without a delete
+	lftp -u $ftpuser,$ftppass -e "mirror --reverse --only-newer $share $remotedir" $ftpserver # lftp sync up without a delete
 	#rsync --bwlimit=250 -avn --delete $share $ftpuser@$ftpserver:  # rsync with a delete after
 	result=$?
 	if [[ $result -ne 0 ]]; then
