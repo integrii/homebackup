@@ -292,7 +292,9 @@ while [[ "$result" -ne "0" ]] && [[ "$failures" -le "$backuptries" ]]; do
 	result=$?
 	if [[ $result -ne 0 ]]; then
 		failures=$(($failures + 1))
-		echo "Backup failure detected.  Try $failures of $backuptries."
+		if [[ $failures -le $backuptries ]]; then
+			echo "Backup failure detected.  Try $failures of $backuptries."
+		fi
 	fi
 done
 
