@@ -50,9 +50,9 @@ fi
 
 
 if [ -f ~/.homebackup.cfg ]; then
-	ftpuser=$(cat ~/.homebackup.cfg | grep User | sed -e 's/User //')
-	ftppass=$(cat ~/.homebackup.cfg | grep Password | sed -e 's/Password //')
-	ftpserver=$(cat ~/.homebackup.cfg | grep Server | sed -e 's/Server //')
+	ftpuser=$(cat ~/.homebackup.cfg | grep ^User | sed -e 's/User //')
+	ftppass=$(cat ~/.homebackup.cfg | grep ^Password | sed -e 's/Password //')
+	ftpserver=$(cat ~/.homebackup.cfg | grep ^Server | sed -e 's/Server //')
 	echo "Backing up data to $ftpuser@$ftpserver."
 else
 	cat << EOF
